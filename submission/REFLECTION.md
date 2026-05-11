@@ -4,7 +4,7 @@
 
 **Student:** Thái Minh Kiên
 **Submission date:** 11/5/2026
-**Lab repo URL:** _public GitHub URL_
+**Lab repo URL:**[ _public GitHub URL_](https://github.com/Ruined-buil/Day23-Track2-Observability-Lab)
 
 ---
 
