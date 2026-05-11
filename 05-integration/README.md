@@ -29,6 +29,19 @@ make restart
 
 If you don't have prior days running, the integration scripts will **stub** the metrics so the cross-day dashboard still renders.
 
+Recommended fallback path for this repo:
+
+```bash
+# In one shell:
+make integration-stub-day19
+
+# In another shell:
+make restart
+```
+
+Grafana provisions the cross-day dashboard automatically from
+`05-integration/full-stack-dashboard.json`.
+
 ## Cross-day dashboard
 
 `full-stack-dashboard.json` shows one panel per source day. Designed to fail-soft — panels with no data show "No Data" rather than breaking.

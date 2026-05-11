@@ -31,4 +31,5 @@ This:
 
 ## Submission checkpoint (5 pts)
 
-Run `python3 verify-docker.py` and commit its `setup-report.json` output to `submission/`.
+Run `python3 verify-docker.py`. The generated file lives at
+`00-setup/setup-report.json`, which is the path checked by `scripts/verify.py`.

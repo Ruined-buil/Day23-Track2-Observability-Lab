@@ -33,8 +33,9 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="day23-inference-api", lifespan=lifespan)
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+FastAPIInstrumentor().instrument_app(app)
 log = bind_log("main")
-
 
 class PredictRequest(BaseModel):
     prompt: str

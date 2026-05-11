@@ -2,8 +2,8 @@
 
 > Fill in each section. Grader reads the "What I'd change" paragraph closest.
 
-**Student:** _your name_
-**Submission date:** _YYYY-MM-DD_
+**Student:** Thái Minh Kiên
+**Submission date:** 11/5/2026
 **Lab repo URL:** _public GitHub URL_
 
 ---
@@ -13,9 +13,11 @@
 Paste output of `python3 00-setup/verify-docker.py`:
 
 ```
-... paste here ...
+Docker:        OK  (29.4.0)
+Compose v2:    OK  (5.1.1)
+RAM available: 7.65 GB (OK)
+Ports free:    BOUND: [8000, 9090, 9093, 3000, 3100, 16686, 4317, 4318, 8888]
 ```
-
 ---
 
 ## 2. Track 02 — Dashboards & Alerts
@@ -37,9 +39,7 @@ Drop `submission/screenshots/slo-burn-rate.png`.
 | _T1_ | restored app              | — |
 | _T1+60s_ | alert resolved        | screenshot `slack-resolved.png` |
 
-### One thing surprised me about Prometheus / Grafana
-
-_(2-3 sentences)_
+I was surprised by how sensitive the Alertmanager/Slack pipeline is to timing. Initially, we didn't see the Slack notification because the container was restarted too quickly before the alert group-wait interval finished. Increasing the sleep times in the trigger script was essential to actually see the "firing" state in the UI.
 
 ---
 
@@ -53,13 +53,15 @@ Drop `submission/screenshots/jaeger-trace.png` showing `embed-text → vector-se
 
 Paste the log line and the trace_id it links to:
 
-```
-... paste here ...
+```json
+{"model": "llama3-mock", "input_tokens": 8, "output_tokens": 18, "quality": 0.873, "duration_seconds": 0.0684, "trace_id": "5833485f4ea1fb05d807c5ba5acb06a2", "event": "prediction served", "level": "info", "timestamp": "2026-05-11T05:57:56.946898Z"}
 ```
 
 ### Tail-sampling math
 
 If your service produced N traces/sec, what fraction did the policy keep? Show the calculation.
+
+The policy is designed to keep 100% of error traces, 100% of traces slower than 2s, and only 1% of healthy traces. Therefore, the fraction of traces kept per second is: `(Errors + Slow Traces) + 0.01 * (Healthy Traces)`. If 99% of requests are fast and healthy, the system drops ~98% of all generated traces to save storage space.
 
 ---
 
@@ -70,23 +72,30 @@ If your service produced N traces/sec, what fraction did the policy keep? Show t
 Paste `04-drift-detection/reports/drift-summary.json`:
 
 ```json
-... paste here ...
+{
+  "prompt_length": { "psi": 3.4611, "drift": "yes" },
+  "embedding_norm": { "psi": 0.0189, "drift": "no" },
+  "response_length": { "psi": 0.0159, "drift": "no" },
+  "response_quality": { "psi": 8.8488, "drift": "yes" }
+}
 ```
 
 ### Which test fits which feature?
 
-For each of `prompt_length`, `embedding_norm`, `response_length`, `response_quality`, name the test (PSI / KL / KS / MMD) you'd choose in production and why.
+- **prompt_length**: **PSI** is perfect here because we just want to know if the "shape" of user input length has shifted significantly (e.g., users moving from short queries to long prompts).
+- **embedding_norm**: **KS Test** is better for these continuous, normalized values because it detects even subtle shifts in the distribution that might signal a change in the underlying embedding model.
+- **response_quality**: **KL Divergence** is the most meaningful for quality scores [0,1] as it measures the information loss between our "gold standard" reference and the current production model.
 
 ---
 
-## 5. Track 05 — Cross-Day Integration
-
 ### Which prior-day metric was hardest to expose? Why?
 
-_(2-3 sentences. If you didn't have prior days running, write about which one would be hardest based on the integration scripts.)_
+The Day 20 Llama.cpp metrics were the hardest because they required a separate stub exporter running outside the main Docker Compose stack. Mapping the networking so that the containerized Prometheus could scrape the host-side exporter (on port 9102) was a tricky configuration step.
 
 ---
 
 ## 6. The single change that mattered most
 
-> **Grader reads this closest.** What one thing about your stack design — a metric you added, a label you dropped, a panel you reorganized, an alert threshold you tuned — made the biggest difference between "works" and "useful"? Write 1-2 paragraphs. Connect it to a concept from the deck.
+The single most important change was fixing the **OpenTelemetry instrumentation logic** in `instrumentation.py`. Originally, the manual spans (`embed-text`, etc.) were not correctly linked to the FastAPI root span, resulting in "orphaned" traces with only 1 span. By fixing the `FastAPIInstrumentor` call to use the actual `app` instance, we enabled proper context propagation.
+
+This is the difference between "works" and "useful" because disconnected spans are almost impossible to debug in a complex AI pipeline. Once the spans were correctly nested, we could finally see exactly which part of the LLM inference (Embedding vs. Generation) was causing latency bottlenecks. This directly implements the **distributed tracing** concepts from the deck, ensuring end-to-end visibility.

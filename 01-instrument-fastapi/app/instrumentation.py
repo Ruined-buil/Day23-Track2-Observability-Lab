@@ -69,10 +69,7 @@ def setup_otel() -> None:
         BatchSpanProcessor(OTLPSpanExporter(endpoint=endpoint, insecure=True))
     )
     trace.set_tracer_provider(provider)
-    # Auto-instrument FastAPI handlers (creates server spans for every route)
-    from fastapi import FastAPI  # local import: only needed at setup
-
-    FastAPIInstrumentor().instrument()
+    # Removed instrument_app from here because it cannot be called after app startup
     _configure_logging()
 
 
